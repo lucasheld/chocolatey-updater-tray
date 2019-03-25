@@ -1,9 +1,37 @@
-
 Add-Type -AssemblyName System.Windows.Forms 
 
 function getListOfUpdates(){
     [System.Collections.ArrayList]$updateList = choco outdated -r | ForEach-Object { $_.split("|")[0] }
     return $updateList
+}
+
+function checkAvailableUpdates($trayIcon, $noUpdates){
+    if ($noUpdates -eq $true){
+        $trayIcon.BalloonTipText = "Please wait"
+        $trayIcon.BalloonTipTitle = "Checking for updates"
+        $trayIcon.ShowBalloonTip(2000)
+    }
+    $outdatedList = getListOfUpdates
+    if ($outdatedList.count -gt 0){
+        [System.Collections.ArrayList]$listToDisplay = @{}
+        if ($outdatedList.count -gt 3){
+            for ($i=0;$i -lt 3; $i++){
+                $listToDisplay.Add($outdatedList[$i])
+            }
+            $trayIcon.BalloonTipText = ($listToDisplay -join ", ") + " + "+ [String]($outdatedList.count - 3) + " more"
+        } else {
+            $trayIcon.BalloonTipText = ($outdatedList -join ", ")
+        }
+        $trayIcon.BalloonTipTitle = "Some applications needs upgrade"
+        $trayIcon.ShowBalloonTip(2000)
+
+    } else {
+        if ($noUpdates -eq $true){
+            $trayIcon.BalloonTipText = "Nothing to do"
+            $trayIcon.BalloonTipTitle = "All your applications are up to date"
+            $trayIcon.ShowBalloonTip(2000)
+        }
+    }
 }
 
 $windowcode = '[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);'
@@ -35,7 +63,6 @@ $trayIcon.contextMenu.MenuItems.AddRange($menuCheckUpdates)
 $trayIcon.contextMenu.MenuItems.AddRange($menuUpgradeAll)
 $trayIcon.contextMenu.MenuItems.AddRange($menuExit)
 
-#Action after clicking on "Exit"
 $menuExit.add_Click({
     $trayIcon.Visible = $false
     $window.Close()
@@ -43,28 +70,7 @@ $menuExit.add_Click({
 })
 
 $menuCheckUpdates.add_Click({
-    $trayIcon.BalloonTipText = "Please wait"
-    $trayIcon.BalloonTipTitle = "Checking for updates"
-    $trayIcon.ShowBalloonTip(2000)
-    $outdatedList = getListOfUpdates
-    if ($outdatedList.count -gt 0){
-        [System.Collections.ArrayList]$listToDisplay = @{}
-        if ($outdatedList.count -gt 3){
-            for ($i=0;$i -lt 3; $i++){
-                $listToDisplay.Add($outdatedList[$i])
-            }
-            $trayIcon.BalloonTipText = ($listToDisplay -join ", ") + " + "+ [String]($outdatedList.count - 3) + " more"
-        } else {
-            $trayIcon.BalloonTipText = ($outdatedList -join ", ")
-        }
-        $trayIcon.BalloonTipTitle = "Some applications needs upgrade"
-        $trayIcon.ShowBalloonTip(2000)
-
-    } else {
-        $trayIcon.BalloonTipText = "Nothing to do"
-        $trayIcon.BalloonTipTitle = "All your applications are up to date"
-        $trayIcon.ShowBalloonTip(2000)
-    }
+    checkAvailableUpdates -trayIcon $trayIcon -noUpdates $true
 })
 
 $menuUpgradeAll.add_Click({
@@ -73,6 +79,8 @@ $menuUpgradeAll.add_Click({
     $trayIcon.ShowBalloonTip(2000)
     start-process -FilePath powershell.exe -ArgumentList '-Command "choco upgrade all"' 
 })
+
+checkAvailableUpdates -trayIcon $trayIcon -noUpdates $false
 
 # Create application context
 $appContext = New-Object -TypeName System.Windows.Forms.ApplicationContext
