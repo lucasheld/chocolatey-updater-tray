@@ -1,12 +1,3 @@
-Param
- (
- [String]$Restart
- )
- 
-If ($Restart -ne "") 
- {
-  Start-Sleep 3
- } 
 
 Add-Type -AssemblyName System.Windows.Forms 
 
