@@ -1,12 +1,12 @@
 Add-Type -AssemblyName System.Windows.Forms 
 
 function getListOfUpdates(){
-    [System.Collections.ArrayList]$updateList = choco outdated -r | ForEach-Object { $_.split("|")[0] }
+    [System.Collections.ArrayList]$updateList = choco outdated -r | % { $_.split("|")[0] } | ? {($_ -notmatch ".install")} 
     return $updateList
 }
 
-function checkAvailableUpdates($trayIcon, $noUpdates){
-    if ($noUpdates -eq $true){
+function checkAvailableUpdates($trayIcon, $allNotifications){
+    if ($allNotifications -eq $true){
         $trayIcon.BalloonTipText = "Please wait"
         $trayIcon.BalloonTipTitle = "Checking for updates"
         $trayIcon.ShowBalloonTip(2000)
@@ -26,7 +26,7 @@ function checkAvailableUpdates($trayIcon, $noUpdates){
         $trayIcon.ShowBalloonTip(2000)
 
     } else {
-        if ($noUpdates -eq $true){
+        if ($allNotifications -eq $true){
             $trayIcon.BalloonTipText = "Nothing to do"
             $trayIcon.BalloonTipTitle = "All your applications are up to date"
             $trayIcon.ShowBalloonTip(2000)
@@ -34,10 +34,12 @@ function checkAvailableUpdates($trayIcon, $noUpdates){
     }
 }
 
+# Hide Powershell window
 $windowcode = '[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);'
 $asyncwindow = Add-Type -MemberDefinition $windowcode -name Win32ShowWindowAsync -namespace Win32Functions -PassThru
 $null = $asyncwindow::ShowWindowAsync((Get-Process -PID $pid).MainWindowHandle, 0)
 
+# Create NotifyIcon object 
 $trayIcon = New-Object -TypeName System.Windows.Forms.NotifyIcon
 $trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe") 
 $trayIcon.Visible = $true
@@ -70,7 +72,7 @@ $menuExit.add_Click({
 })
 
 $menuCheckUpdates.add_Click({
-    checkAvailableUpdates -trayIcon $trayIcon -noUpdates $true
+    checkAvailableUpdates -trayIcon $trayIcon -allNotifications $true
 })
 
 $menuUpgradeAll.add_Click({
@@ -80,8 +82,9 @@ $menuUpgradeAll.add_Click({
     start-process -FilePath powershell.exe -ArgumentList '-Command "choco upgrade all"' 
 })
 
-checkAvailableUpdates -trayIcon $trayIcon -noUpdates $false
+# Execute checkAvailableUpdates once, at application start without notifications
+checkAvailableUpdates -trayIcon $trayIcon -allNotifications $false
 
-# Create application context
+# Create application context - must be on the end of the file, nothing after this cannot be executed
 $appContext = New-Object -TypeName System.Windows.Forms.ApplicationContext
 [void][System.Windows.Forms.Application]::Run($appContext)
