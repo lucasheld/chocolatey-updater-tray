@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Windows.Forms 
 
 function getListOfUpdates(){
-    [System.Collections.ArrayList]$updateList = choco outdated -r | % { $_.split("|")[0] }} 
+    [System.Collections.ArrayList]$updateList = choco outdated -r | % { $_.split("|")[0] }
     return $updateList
 }
 
