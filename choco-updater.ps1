@@ -22,6 +22,20 @@ function checkAvailableUpdates($trayIcon, $allNotifications){
         } else {
             $trayIcon.BalloonTipText = ($outdatedList -join ", ")
         }
+
+        # Load original icon as bitmap
+        $bitmap = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe").ToBitmap()
+
+        # Draw red circle
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.DrawImage($bitmap, 0, 0)
+        $color = [System.Drawing.Color]::FromArgb(255, 255, 0, 0)
+        $brush = New-Object System.Drawing.SolidBrush($color)
+        $graphics.FillEllipse($brush, 15, 0, 15, 15)
+
+        # Set new icon
+        $trayIcon.Icon = [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
+
         $trayIcon.BalloonTipTitle = "Some applications needs upgrade"
         $trayIcon.ShowBalloonTip(2000)
 
@@ -41,13 +55,13 @@ $null = $asyncwindow::ShowWindowAsync((Get-Process -PID $pid).MainWindowHandle, 
 
 # Create NotifyIcon object 
 $trayIcon = New-Object -TypeName System.Windows.Forms.NotifyIcon
-$trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe") 
+$trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe")
 $trayIcon.Visible = $true
 
 # Enable gabage collector
 [System.GC]::Collect()
 
-# Add menu Check Updaets
+# Add menu Check Updates
 $menuCheckUpdates = New-Object System.Windows.Forms.MenuItem
 $menuCheckUpdates.Text = "Check updates"
 
