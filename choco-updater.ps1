@@ -1,15 +1,15 @@
-Add-Type -AssemblyName System.Windows.Forms 
+Add-Type -AssemblyName System.Windows.Forms
 
 function getListOfUpdates(){
     [System.Collections.ArrayList]$updateList = choco outdated -r | % { $_.split("|")[0] }
     return $updateList
 }
 
-function checkAvailableUpdates($trayIcon, $allNotifications){
+function checkAvailableUpdates($allNotifications){
     if ($allNotifications -eq $true){
-        $trayIcon.BalloonTipText = "Please wait"
-        $trayIcon.BalloonTipTitle = "Checking for updates"
-        $trayIcon.ShowBalloonTip(2000)
+        $global:trayIcon.BalloonTipText = "Please wait"
+        $global:trayIcon.BalloonTipTitle = "Checking for updates"
+        $global:trayIcon.ShowBalloonTip(2000)
     }
     $outdatedList = getListOfUpdates
     if ($outdatedList.count -gt 0){
@@ -18,9 +18,9 @@ function checkAvailableUpdates($trayIcon, $allNotifications){
             for ($i=0;$i -lt 3; $i++){
                 $listToDisplay.Add($outdatedList[$i])
             }
-            $trayIcon.BalloonTipText = ($listToDisplay -join ", ") + " + "+ [String]($outdatedList.count - 3) + " more"
+            $global:trayIcon.BalloonTipText = ($listToDisplay -join ", ") + " + "+ [String]($outdatedList.count - 3) + " more"
         } else {
-            $trayIcon.BalloonTipText = ($outdatedList -join ", ")
+            $global:trayIcon.BalloonTipText = ($outdatedList -join ", ")
         }
 
         # Load original icon as bitmap
@@ -34,16 +34,16 @@ function checkAvailableUpdates($trayIcon, $allNotifications){
         $graphics.FillEllipse($brush, 15, 0, 15, 15)
 
         # Set new icon
-        $trayIcon.Icon = [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
+        $global:trayIcon.Icon = [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
 
-        $trayIcon.BalloonTipTitle = "Some applications needs upgrade"
-        $trayIcon.ShowBalloonTip(2000)
+        $global:trayIcon.BalloonTipTitle = "Some applications needs upgrade"
+        $global:trayIcon.ShowBalloonTip(2000)
 
     } else {
         if ($allNotifications -eq $true){
-            $trayIcon.BalloonTipText = "Nothing to do"
-            $trayIcon.BalloonTipTitle = "All your applications are up to date"
-            $trayIcon.ShowBalloonTip(2000)
+            $global:trayIcon.BalloonTipText = "Nothing to do"
+            $global:trayIcon.BalloonTipTitle = "All your applications are up to date"
+            $global:trayIcon.ShowBalloonTip(2000)
         }
     }
 }
@@ -53,10 +53,10 @@ $windowcode = '[DllImport("user32.dll")] public static extern bool ShowWindowAsy
 $asyncwindow = Add-Type -MemberDefinition $windowcode -name Win32ShowWindowAsync -namespace Win32Functions -PassThru
 $null = $asyncwindow::ShowWindowAsync((Get-Process -PID $pid).MainWindowHandle, 0)
 
-# Create NotifyIcon object 
-$trayIcon = New-Object -TypeName System.Windows.Forms.NotifyIcon
-$trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe")
-$trayIcon.Visible = $true
+# Create NotifyIcon object
+$global:trayIcon = New-Object -TypeName System.Windows.Forms.NotifyIcon
+$global:trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe")
+$global:trayIcon.Visible = $true
 
 # Enable gabage collector
 [System.GC]::Collect()
@@ -74,30 +74,30 @@ $menuExit = New-Object System.Windows.Forms.MenuItem
 $menuExit.Text = "Exit"
 
 # Add all menus as context menus
-$trayIcon.ContextMenu = New-Object System.Windows.Forms.ContextMenu
-$trayIcon.contextMenu.MenuItems.AddRange($menuCheckUpdates)
-$trayIcon.contextMenu.MenuItems.AddRange($menuUpgradeAll)
-$trayIcon.contextMenu.MenuItems.AddRange($menuExit)
+$global:trayIcon.ContextMenu = New-Object System.Windows.Forms.ContextMenu
+$global:trayIcon.contextMenu.MenuItems.AddRange($menuCheckUpdates)
+$global:trayIcon.contextMenu.MenuItems.AddRange($menuUpgradeAll)
+$global:trayIcon.contextMenu.MenuItems.AddRange($menuExit)
 
 $menuExit.add_Click({
-    $trayIcon.Visible = $false
+    $global:trayIcon.Visible = $false
     $window.Close()
     Stop-Process $pid
 })
 
 $menuCheckUpdates.add_Click({
-    checkAvailableUpdates -trayIcon $trayIcon -allNotifications $true
+    checkAvailableUpdates -allNotifications $true
 })
 
 $menuUpgradeAll.add_Click({
-    $trayIcon.BalloonTipText = "Please wait"
-    $trayIcon.BalloonTipTitle = "Going to upgrade all applications"
-    $trayIcon.ShowBalloonTip(2000)
+    $global:trayIcon.BalloonTipText = "Please wait"
+    $global:trayIcon.BalloonTipTitle = "Going to upgrade all applications"
+    $global:trayIcon.ShowBalloonTip(2000)
     start-process -FilePath powershell.exe -ArgumentList '-Command "choco upgrade all"' 
 })
 
 # Execute checkAvailableUpdates once, at application start without notifications
-checkAvailableUpdates -trayIcon $trayIcon -allNotifications $false
+checkAvailableUpdates -allNotifications $false
 
 # Create application context - must be on the end of the file, nothing after this cannot be executed
 $appContext = New-Object -TypeName System.Windows.Forms.ApplicationContext
