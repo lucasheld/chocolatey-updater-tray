@@ -24,7 +24,7 @@ function checkAvailableUpdates($allNotifications){
         }
 
         # Load original icon as bitmap
-        $bitmap = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe").ToBitmap()
+        $bitmap = [System.Drawing.Icon]::ExtractAssociatedIcon($global:chocoExe).ToBitmap()
 
         # Draw red circle
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -40,6 +40,7 @@ function checkAvailableUpdates($allNotifications){
         $global:trayIcon.ShowBalloonTip(2000)
 
     } else {
+        $global:trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($global:chocoExe)
         if ($allNotifications -eq $true){
             $global:trayIcon.BalloonTipText = "Nothing to do"
             $global:trayIcon.BalloonTipTitle = "All your applications are up to date"
@@ -53,9 +54,12 @@ $windowcode = '[DllImport("user32.dll")] public static extern bool ShowWindowAsy
 $asyncwindow = Add-Type -MemberDefinition $windowcode -name Win32ShowWindowAsync -namespace Win32Functions -PassThru
 $null = $asyncwindow::ShowWindowAsync((Get-Process -PID $pid).MainWindowHandle, 0)
 
+# Specify path to choco.exe
+$global:chocoExe = 'C:\ProgramData\chocolatey\bin\choco.exe'
+
 # Create NotifyIcon object
 $global:trayIcon = New-Object -TypeName System.Windows.Forms.NotifyIcon
-$global:trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("C:\ProgramData\chocolatey\bin\choco.exe")
+$global:trayIcon.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($global:chocoExe)
 $global:trayIcon.Visible = $true
 
 # Enable gabage collector
@@ -93,7 +97,9 @@ $menuUpgradeAll.add_Click({
     $global:trayIcon.BalloonTipText = "Please wait"
     $global:trayIcon.BalloonTipTitle = "Going to upgrade all applications"
     $global:trayIcon.ShowBalloonTip(2000)
-    start-process -FilePath powershell.exe -ArgumentList '-Command "choco upgrade all"' 
+    $chocoProcess = start-process -FilePath powershell.exe -PassThru -ArgumentList '-Command "choco upgrade all"'
+    $chocoProcess.WaitForExit()
+    checkAvailableUpdates -allNotifications $false
 })
 
 # Execute checkAvailableUpdates once, at application start without notifications
