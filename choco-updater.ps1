@@ -103,7 +103,7 @@ $menuUpgradeAll.add_Click({
     $global:trayIcon.BalloonTipText = "Please wait"
     $global:trayIcon.BalloonTipTitle = "Going to upgrade all applications"
     $global:trayIcon.ShowBalloonTip(2000)
-    $chocoProcess = start-process -FilePath powershell.exe -PassThru -ArgumentList '-Command "choco upgrade all"'
+    $chocoProcess = start-process -FilePath powershell.exe -PassThru -ArgumentList '-Command "choco upgrade all -y"'
     $chocoProcess.WaitForExit()
     checkAvailableUpdates -allNotifications $false
 })
